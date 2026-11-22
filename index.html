@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>بازی‌های کارتی</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--space:#0a0b1e;--nebula:#2a1b6b;--violet:#6c4cf0;--comet:#5ee7ff;--star:#ffc857;--paper:#eef0ff;--ink:#14163a;--red:#e5484d;--ok:#4ade80;color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(ellipse at 20% 0%,var(--nebula) 0%,transparent 55%),radial-gradient(ellipse at 90% 100%,#13396b 0%,transparent 50%),var(--space);color:var(--paper);font-family:Tahoma,"Segoe UI",system-ui,sans-serif;display:flex;justify-content:center;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app{position:relative;z-index:1;width:100%;max-width:440px;min-height:100%;display:flex;flex-direction:column;padding:12px 14px 18px;gap:10px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:18px;margin:0;font-weight:700}
+.chips{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:6px 14px;font-weight:700;color:var(--star)}
+.icon-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:var(--paper);border-radius:50%;width:36px;height:36px;font-size:16px;cursor:pointer}
+.games{display:flex;gap:6px}
+.games button{flex:1;padding:9px 4px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:transparent;color:var(--paper);font:inherit;font-size:14px;cursor:pointer}
+.games button.on{background:var(--violet);border-color:var(--violet);font-weight:700}
+.table{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:6px;padding:14px 8px;border-radius:22px;background:rgba(10,11,30,.55);border:1px solid rgba(94,231,255,.18);min-height:340px}
+.hand-label{display:flex;justify-content:space-between;font-size:13px;opacity:.85;margin-bottom:6px}
+.score{font-weight:700;color:var(--comet)}
+.hand{display:flex;justify-content:center;min-height:98px;padding-inline-start:30px}
+.card{width:64px;height:92px;margin-inline-start:-30px;border-radius:9px;background:var(--paper);color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;padding:6px 7px;font-weight:700;font-size:20px;line-height:1;box-shadow:0 6px 16px rgba(0,0,0,.45);direction:ltr;animation:deal .25s ease-out;border:0;font-family:inherit}
+.card.red{color:var(--red)}
+.card .big{align-self:center;font-size:30px}
+.card .br{align-self:flex-end;transform:rotate(180deg)}
+.card.back{background:repeating-linear-gradient(45deg,var(--violet) 0 6px,var(--nebula) 6px 12px);border:2px solid var(--paper)}
+.card.sm{width:46px;height:66px;margin-inline-start:-22px;font-size:14px;padding:4px 5px}
+.card.sm .big{font-size:20px}
+.card.dim{opacity:.35}
+.card.pick{cursor:pointer;outline:2px solid var(--comet)}
+.hand.fan{min-height:70px;padding-inline-start:22px;flex-wrap:nowrap}
+@keyframes deal{from{transform:translateY(-24px);opacity:0}to{transform:none;opacity:1}}
+.msg{text-align:center;min-height:30px;font-size:16px;font-weight:700}
+.msg.win{color:var(--ok)}.msg.lose{color:var(--red)}.msg.push{color:var(--star)}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.controls button,.bets button,.primary,.suitbtn{font:inherit;border-radius:12px;border:0;padding:13px 6px;font-weight:700;cursor:pointer;color:var(--ink);background:var(--paper)}
+.controls button:disabled,.primary:disabled{opacity:.35;cursor:default}
+.primary{background:var(--comet);width:100%}
+.bets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bets button{background:rgba(255,255,255,.1);color:var(--paper);border:1px solid rgba(255,255,255,.2)}
+.bets button.on{background:var(--star);color:var(--ink);border-color:var(--star)}
+.bet-line{text-align:center;font-size:14px;opacity:.9}
+.suits{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.suitbtn{font-size:26px;padding:10px 0}
+.suitbtn.red{color:var(--red)}
+.trick{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:76px 76px 76px;justify-items:center;align-items:center;min-height:228px}
+.trick .t0{grid-area:3/2}.trick .t1{grid-area:2/1}.trick .t2{grid-area:1/2}.trick .t3{grid-area:2/3}
+.trick .card{margin:0}
+.info{display:flex;justify-content:space-between;font-size:13px;gap:6px}
+.info b{color:var(--comet)}
+button:focus-visible{outline:3px solid var(--comet);outline-offset:2px}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div class="app">
+  <header>
+    <button class="icon-btn" id="music" aria-label="موسیقی">♪</button>
+    <h1>بازی‌های کارتی</h1>
+    <div class="chips" id="chips">۱٬۰۰۰</div>
+  </header>
+
+  <div class="games">
+    <button id="tab21" class="on">۲۱</button>
+    <button id="tabPk">پوکر</button>
+    <button id="tabHk">حکم</button>
+  </div>
+
+  <!-- ===== 21 ===== -->
+  <section id="g21" style="display:flex;flex-direction:column;gap:10px;flex:1">
+    <div class="table">
+      <div><div class="hand-label"><span>دلر</span><span class="score" id="dScore"></span></div><div class="hand" id="dealer"></div></div>
+      <div class="msg" id="msg">مبلغ شرط را انتخاب کن</div>
+      <div><div class="hand-label"><span>تو</span><span class="score" id="pScore"></span></div><div class="hand" id="player"></div></div>
+    </div>
+    <div id="betPanel">
+      <div class="bets" id="bets"></div>
+      <div class="bet-line">شرط: <b id="betVal">۰</b></div>
+      <button class="primary" id="dealBtn" style="margin-top:8px">پخش کارت</button>
+      <button class="primary hidden" id="resetBtn" style="margin-top:8px;background:var(--star)">شروع دوباره با ۱٬۰۰۰ سکه</button>
+    </div>
+    <div class="controls hidden" id="playPanel">
+      <button id="hitBtn">کارت بده</button><button id="standBtn">بس است</button><button id="dblBtn">دو برابر</button>
+    </div>
+  </section>
+
+  <!-- ===== Poker ===== -->
+  <section id="gPk" class="hidden" style="flex-direction:column;gap:10px;flex:1">
+    <div class="table">
+      <div><div class="hand-label"><span>حریف</span><span class="score" id="pkStack"></span></div><div class="hand fan" id="pkOpp"></div></div>
+      <div><div class="hand-label"><span>کارت‌های روی میز</span><span class="score" id="pkPot"></span></div><div class="hand fan" id="pkBoard"></div></div>
+      <div class="msg" id="pkMsg">برای شروع «دست جدید» را بزن</div>
+      <div><div class="hand-label"><span>تو</span><span class="score" id="pkMine"></span></div><div class="hand fan" id="pkYou"></div></div>
+    </div>
+    <div class="controls" id="pkBtns" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div class="bet-line">پوکر دو نفره (تگزاس هولدم). ورودی هر دست ۱۰ و هر شرط ۲۰ سکه. حداقل ۲۵۰ سکه لازم است.</div>
+  </section>
+
+  <!-- ===== Hokm ===== -->
+  <section id="gHk" class="hidden" style="flex-direction:column;gap:10px;flex:1">
+    <div class="info"><span>دست: ما <b id="hkT0">۰</b> – آن‌ها <b id="hkT1">۰</b></span><span>حکم: <b id="hkTrump">—</b></span><span>امتیاز: ما <b id="hkM0">۰</b> – آن‌ها <b id="hkM1">۰</b></span></div>
+    <div class="table">
+      <div class="hand-label"><span id="hkN2">همبازی</span><span></span></div>
+      <div class="trick" id="hkTrick"></div>
+      <div class="hand-label"><span id="hkN1">چپ</span><span id="hkN3">راست</span></div>
+      <div class="msg" id="hkMsg">برای شروع «دور جدید» را بزن</div>
+      <div class="hand fan" id="hkYou"></div>
+    </div>
+    <div id="hkBtns"></div>
+  </section>
+</div>
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const fa = n => Number(n).toLocaleString('fa-IR');
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const SUITS = ['♠','♥','♦','♣'], RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const isRed = s => s === '♥' || s === '♦';
+const rv = c => c.r === 'A' ? 14 : c.r === 'K' ? 13 : c.r === 'Q' ? 12 : c.r === 'J' ? 11 : Number(c.r);
+
+let chips = 1000;
+function setChips(v){
+  chips = v; $('chips').textContent = fa(chips);
+  if (tg && tg.CloudStorage) tg.CloudStorage.setItem('chips', String(chips), () => {});
+}
+if (tg && tg.CloudStorage) tg.CloudStorage.getItem('chips', (e, v) => { if (!e && v && Number(v) >= 0) { setChips(Number(v)); if (typeof toBetPhase === 'function') toBetPhase(); } });
+
+function shuffledDeck(copies = 1){
+  const d = [];
+  for (let k = 0; k < copies; k++) for (const s of SUITS) for (const r of RANKS) d.push({s, r});
+  for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; }
+  return d;
+}
+function cardEl(c, hidden, small){
+  const el = document.createElement('div');
+  const sm = small ? ' sm' : '';
+  if (hidden) { el.className = 'card back' + sm; return el; }
+  el.className = 'card' + (isRed(c.s) ? ' red' : '') + sm;
+  el.innerHTML = `<span>${c.r}${c.s}</span><span class="big">${c.s}</span><span class="br">${c.r}${c.s}</span>`;
+  return el;
+}
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+
+/* ================= Tabs ================= */
+function openTab(name){
+  ['g21','gPk','gHk'].forEach(id => hide(id));
+  ['tab21','tabPk','tabHk'].forEach(id => $(id).classList.remove('on'));
+  const map = {g21:['g21','tab21'], gPk:['gPk','tabPk'], gHk:['gHk','tabHk']};
+  show(map[name][0]); $(map[name][1]).classList.add('on');
+  startMusic();
+}
+$('tab21').onclick = () => openTab('g21');
+$('tabPk').onclick = () => { openTab('gPk'); pkIdle(); };
+$('tabHk').onclick = () => { openTab('gHk'); hkIdle(); };
+
+/* ================= 21 ================= */
+let bet = 0, baseBet = 0, deck = [], player = [], dealer = [], phase = 'bet';
+function draw(){ if (deck.length < 20) deck = shuffledDeck(4); return deck.pop(); }
+function value(hand){
+  let t = 0, aces = 0;
+  for (const c of hand) {
+    if (c.r === 'A') { aces++; t += 11; }
+    else if ('JQK'.includes(c.r)) t += 10;
+    else t += Number(c.r);
+  }
+  while (t > 21 && aces) { t -= 10; aces--; }
+  return t;
+}
+const isBJ = h => h.length === 2 && value(h) === 21;
+function render(hideDealer){
+  const dEl = $('dealer'), pEl = $('player');
+  dEl.innerHTML = ''; pEl.innerHTML = '';
+  dealer.forEach((c, i) => dEl.appendChild(cardEl(c, hideDealer && i === 1)));
+  player.forEach(c => pEl.appendChild(cardEl(c, false)));
+  $('dScore').textContent = dealer.length ? (hideDealer ? fa(value([dealer[0]])) : fa(value(dealer))) : '';
+  $('pScore').textContent = player.length ? fa(value(player)) : '';
+  $('chips').textContent = fa(chips);
+  $('betVal').textContent = fa(bet);
+}
+function say(text, cls){ const m = $('msg'); m.textContent = text; m.className = 'msg ' + (cls || ''); }
+function showPanel(p){ $('betPanel').classList.toggle('hidden', p !== 'bet'); $('playPanel').classList.toggle('hidden', p !== 'play'); }
+function buildBets(){
+  const box = $('bets'); box.innerHTML = '';
+  [10, 50, 100, 250].forEach(v => {
+    const b = document.createElement('button');
+    b.textContent = fa(v); b.disabled = v > chips; b.className = bet === v ? 'on' : '';
+    b.onclick = () => { bet = v; buildBets(); $('betVal').textContent = fa(bet); $('dealBtn').disabled = false; sound('tick'); startMusic(); };
+    box.appendChild(b);
+  });
+}
+function toBetPhase(){
+  phase = 'bet';
+  if (bet > chips) bet = 0;
+  const broke = chips < 10;
+  $('resetBtn').classList.toggle('hidden', !broke);
+  $('dealBtn').classList.toggle('hidden', broke);
+  $('dealBtn').disabled = bet === 0;
+  buildBets(); showPanel('bet'); render(false);
+}
+function startRound(){
+  if (!bet || bet > chips) return;
+  baseBet = bet; setChips(chips - bet); phase = 'play';
+  player = [draw(), draw()]; dealer = [draw(), draw()];
+  sound('card'); showPanel('play'); say('نوبت توست');
+  $('dblBtn').disabled = chips < bet;
+  render(true);
+  if (isBJ(player) || isBJ(dealer)) finish();
+}
+function hit(){ if (phase !== 'play') return; player.push(draw()); sound('card'); $('dblBtn').disabled = true; render(true); if (value(player) >= 21) finish(); }
+function stand(){ if (phase === 'play') finish(); }
+function dbl(){ if (phase !== 'play' || chips < bet) return; setChips(chips - bet); bet *= 2; player.push(draw()); sound('card'); render(true); finish(); }
+function finish(){
+  phase = 'done';
+  const pv = value(player);
+  if (pv <= 21 && !isBJ(player) && !isBJ(dealer)) while (value(dealer) < 17) dealer.push(draw());
+  const dv = value(dealer);
+  let result, payout = 0;
+  if (isBJ(player) && !isBJ(dealer)) { result = 'win'; payout = Math.floor(bet * 2.5); say('بلک‌جک! برد ۳ به ۲', 'win'); }
+  else if (isBJ(dealer) && !isBJ(player)) { result = 'lose'; say('دلر بلک‌جک کرد', 'lose'); }
+  else if (pv > 21) { result = 'lose'; say('سوختی! بیشتر از ۲۱', 'lose'); }
+  else if (dv > 21) { result = 'win'; payout = bet * 2; say('دلر سوخت. بردی!', 'win'); }
+  else if (pv > dv) { result = 'win'; payout = bet * 2; say('بردی!', 'win'); }
+  else if (pv < dv) { result = 'lose'; say('باختی', 'lose'); }
+  else { result = 'push'; payout = bet; say('مساوی. شرط برگشت', 'push'); }
+  setChips(chips + payout);
+  sound(result === 'win' ? 'win' : result === 'lose' ? 'lose' : 'tick'); haptic(result);
+  render(false);
+  setTimeout(() => { bet = baseBet <= chips ? baseBet : 0; toBetPhase(); }, 1800);
+}
+function haptic(result){ if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred(result === 'win' ? 'success' : result === 'lose' ? 'error' : 'warning'); }
+$('dealBtn').onclick = () => { startMusic(); startRound(); };
+$('hitBtn').onclick = hit; $('standBtn').onclick = stand; $('dblBtn').onclick = dbl;
+$('resetBtn').onclick = () => { setChips(1000); bet = 0; player = []; dealer = []; say('مبلغ شرط را انتخاب کن'); toBetPhase(); };
+
+/* ================= Poker (Texas Hold'em, heads-up) ================= */
+const HAND_NAMES = ['کارت بالا','یک جفت','دو جفت','سه‌تایی','استریت','فلاش','فول‌هاوس','چهارتایی','استریت فلاش'];
+function rank5(cards){
+  const vals = cards.map(rv).sort((a, b) => b - a);
+  const flush = cards.every(c => c.s === cards[0].s);
+  const uniq = [...new Set(vals)];
+  let straightHigh = 0;
+  if (uniq.length === 5) {
+    if (vals[0] - vals[4] === 4) straightHigh = vals[0];
+    else if (vals[0] === 14 && vals[1] === 5) straightHigh = 5;
+  }
+  const counts = {};
+  vals.forEach(v => counts[v] = (counts[v] || 0) + 1);
+  const groups = Object.keys(counts).map(Number).sort((a, b) => counts[b] - counts[a] || b - a);
+  const shape = groups.map(g => counts[g]).join('');
+  const ordered = groups;
+  if (straightHigh && flush) return [8, straightHigh];
+  if (shape === '41') return [7, ...ordered];
+  if (shape === '32') return [6, ...ordered];
+  if (flush) return [5, ...vals];
+  if (straightHigh) return [4, straightHigh];
+  if (shape === '311') return [3, ...ordered];
+  if (shape === '221') return [2, ...ordered];
+  if (shape === '2111') return [1, ...ordered];
+  return [0, ...vals];
+}
+function cmpRank(a, b){
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] || 0) - (b[i] || 0);
+    if (d) return d;
+  }
+  return 0;
+}
+function best7(cards){
+  let best = null;
+  for (let i = 0; i < cards.length; i++) for (let j = i + 1; j < cards.length; j++) {
+    const five = cards.filter((_, k) => k !== i && k !== j);
+    const r = rank5(five);
+    if (!best || cmpRank(r, best) > 0) best = r;
+  }
+  return best;
+}
+const UNIT = 20, ANTE = 10, MIN_CHIPS = 250;
+const PK = {bot: 1000, pot: 0, mine: [], opp: [], board: [], reveal: false, running: false, resolve: null};
+
+function pkSay(t, cls){ const m = $('pkMsg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
+function pkRender(){
+  const o = $('pkOpp'), b = $('pkBoard'), y = $('pkYou');
+  o.innerHTML = ''; b.innerHTML = ''; y.innerHTML = '';
+  PK.opp.forEach(c => o.appendChild(cardEl(c, !PK.reveal, true)));
+  PK.board.forEach(c => b.appendChild(cardEl(c, false, true)));
+  PK.mine.forEach(c => y.appendChild(cardEl(c, false, true)));
+  $('pkPot').textContent = 'پات: ' + fa(PK.pot);
+  $('pkStack').textContent = 'سکه‌ی حریف: ' + fa(PK.bot);
+  $('chips').textContent = fa(chips);
+}
+function pkAsk(options){
+  const box = $('pkBtns'); box.innerHTML = '';
+  box.style.gridTemplateColumns = `repeat(${options.length},1fr)`;
+  return new Promise(resolve => {
+    options.forEach(([label, action]) => {
+      const b = document.createElement('button'); b.textContent = label;
+      b.onclick = () => { box.innerHTML = ''; sound('tick'); resolve(action); };
+      box.appendChild(b);
+    });
+  });
+}
+function pkIdle(){
+  if (PK.running) return;
+  const box = $('pkBtns'); box.innerHTML = ''; box.style.gridTemplateColumns = '1fr';
+  const b = document.createElement('button'); b.className = 'primary'; b.textContent = 'دست جدید';
+  b.onclick = () => { startMusic(); pkHand(); }; box.appendChild(b);
+}
+function pkStrength(){
+  if (PK.board.length === 0) {
+    const [a, b] = PK.opp.map(rv); const hi = Math.max(a, b), lo = Math.min(a, b);
+    let s = ((a + b) / 2 - 2) / 12 * 0.5;
+    if (a === b) s = 0.6 + a / 40;
+    if (PK.opp[0].s === PK.opp[1].s) s += 0.06;
+    if (hi - lo === 1) s += 0.04;
+    return Math.min(s, 1);
+  }
+  const r = best7(PK.opp.concat(PK.board));
+  return [0.2 + r[1] / 60, 0.5, 0.7, 0.8, 0.9, 0.92, 0.95, 0.98, 1][r[0]];
+}
+function pkBotAct(facing, raises){
+  const s = pkStrength(), r = Math.random();
+  if (facing > 0) {
+    if (s > 0.78 && raises < 2 && r < 0.6) return 'raise';
+    if (s > 0.35 || r < 0.15) return 'call';
+    return 'fold';
+  }
+  return (s > 0.58 || r < 0.12) ? 'bet' : 'check';
+}
+async function pkBetting(){
+  let my = 0, ob = 0, raises = 0, turn = 'me';
+  const acted = {me: false, bot: false};
+  while (true) {
+    const other = turn === 'me' ? 'bot' : 'me';
+    const facing = turn === 'me' ? ob - my : my - ob;
+    let act;
+    if (turn === 'me') {
+      const opts = facing > 0
+        ? [['رها کن', 'fold'], ['کال ' + fa(facing), 'call']].concat(raises < 2 ? [['ریز +' + fa(UNIT), 'raise']] : [])
+        : [['چک', 'check'], ['شرط ' + fa(UNIT), 'bet']];
+      act = await pkAsk(opts);
+    } else { await sleep(800); act = pkBotAct(facing, raises); }
+    if (act === 'fold') return turn === 'me' ? 'me-fold' : 'bot-fold';
+    const who = turn === 'me' ? 'تو' : 'حریف';
+    const pay = a => { if (turn === 'me') { setChips(chips - a); my += a; } else { PK.bot -= a; ob += a; } PK.pot += a; };
+    if (act === 'call') { pay(facing); pkSay(who + ': کال'); pkRender(); sound('card'); return 'ok'; }
+    if (act === 'check') { acted[turn] = true; pkSay(who + ': چک'); if (acted.me && acted.bot) return 'ok'; }
+    if (act === 'bet') { pay(UNIT); raises++; acted[turn] = true; acted[other] = false; pkSay(who + ': شرط ' + fa(UNIT)); }
+    if (act === 'raise') { pay(facing + UNIT); raises++; acted[turn] = true; acted[other] = false; pkSay(who + ': ریز'); }
+    pkRender(); sound('card');
+    turn = other;
+  }
+}
+async function pkHand(){
+  if (PK.running) return;
+  if (chips < MIN_CHIPS) { pkSay('برای پوکر حداقل ' + fa(MIN_CHIPS) + ' سکه لازم است. با بازی ۲۱ سکه جمع کن.', 'lose'); return; }
+  PK.running = true;
+  if (PK.bot < MIN_CHIPS) PK.bot = 1000;
+  $('pkBtns').innerHTML = '';
+  const d = shuffledDeck();
+  PK.mine = [d.pop(), d.pop()]; PK.opp = [d.pop(), d.pop()]; PK.board = []; PK.reveal = false;
+  setChips(chips - ANTE); PK.bot -= ANTE; PK.pot = ANTE * 2;
+  pkRender(); sound('card'); pkSay('ورودی ' + fa(ANTE) + ' سکه پرداخت شد');
+  $('pkMine').textContent = '';
+  let outcome = 'ok';
+  for (let street = 0; street < 4 && outcome === 'ok'; street++) {
+    if (street === 1) PK.board.push(d.pop(), d.pop(), d.pop());
+    if (street > 1) PK.board.push(d.pop());
+    pkRender();
+    if (street > 0) { pkSay(['', 'فلاپ', 'ترن', 'ریور'][street]); await sleep(600); }
+    outcome = await pkBetting();
+  }
+  PK.reveal = true;
+  if (outcome === 'me-fold') { PK.bot += PK.pot; pkSay('رها کردی. حریف برد.', 'lose'); sound('lose'); haptic('lose'); }
+  else if (outcome === 'bot-fold') { setChips(chips + PK.pot); pkSay('حریف رها کرد. بردی!', 'win'); sound('win'); haptic('win'); }
+  else {
+    const mr = best7(PK.mine.concat(PK.board)), or = best7(PK.opp.concat(PK.board));
+    const c = cmpRank(mr, or);
+    const detail = ` (تو: ${HAND_NAMES[mr[0]]} | حریف: ${HAND_NAMES[or[0]]})`;
+    if (c > 0) { setChips(chips + PK.pot); pkSay('بردی!' + detail, 'win'); sound('win'); haptic('win'); }
+    else if (c < 0) { PK.bot += PK.pot; pkSay('باختی.' + detail, 'lose'); sound('lose'); haptic('lose'); }
+    else { setChips(chips + PK.pot / 2); PK.bot += PK.pot / 2; pkSay('مساوی.' + detail, 'push'); }
+  }
+  PK.pot = 0; pkRender();
+  PK.running = false; pkIdle();
+}
+
+/* ================= Hokm ================= */
+const SEAT = ['تو', 'چپ', 'همبازی', 'راست'];
+const H = {hands: [[], [], [], []], trump: null, hakem: Math.floor(Math.random() * 4), trick: [], tricks: [0, 0], match: [0, 0], running: false, resolve: null};
+const sortHand = (h, trump) => h.sort((a, b) => {
+  const sa = SUITS.indexOf(a.s) + (a.s === trump ? -10 : 0), sb = SUITS.indexOf(b.s) + (b.s === trump ? -10 : 0);
+  return sa - sb || rv(b) - rv(a);
+});
+function hkIdle(){
+  if (H.running) return;
+  const box = $('hkBtns'); box.innerHTML = '';
+  const b = document.createElement('button'); b.className = 'primary'; b.textContent = 'دور جدید';
+  b.onclick = () => { startMusic(); box.innerHTML = ''; hkRound(); }; box.appendChild(b);
+}
+function legalCards(seat){
+  const hand = H.hands[seat];
+  if (!H.trick.length) return hand;
+  const ls = H.trick[0].c.s, has = hand.filter(c => c.s === ls);
+  return has.length ? has : hand;
+}
+function beats(c, best){
+  if (c.s === best.s) return rv(c) > rv(best);
+  return c.s === H.trump;
+}
+function trickLeader(){
+  let best = H.trick[0];
+  for (const t of H.trick.slice(1)) if (beats(t.c, best.c)) best = t;
+  return best;
+}
+const minBy = (a, f) => a.reduce((m, x) => f(x) < f(m) ? x : m);
+const maxBy = (a, f) => a.reduce((m, x) => f(x) > f(m) ? x : m);
+function discard(hand){
+  const non = hand.filter(c => c.s !== H.trump);
+  return minBy(non.length ? non : hand, rv);
+}
+function botPlay(seat){
+  const hand = H.hands[seat], opts = legalCards(seat);
+  if (!H.trick.length) {
+    const non = opts.filter(c => c.s !== H.trump);
+    return non.length ? maxBy(non, rv) : minBy(opts, rv);
+  }
+  const lead = H.trick[0].c.s, w = trickLeader();
+  const partnerWins = w.seat === (seat + 2) % 4;
+  if (opts[0].s === lead && opts.every(c => c.s === lead)) {
+    if (partnerWins) return minBy(opts, rv);
+    const win = opts.filter(c => beats(c, w.c));
+    return win.length ? minBy(win, rv) : minBy(opts, rv);
+  }
+  if (partnerWins) return discard(hand);
+  const trumps = hand.filter(c => c.s === H.trump);
+  if (trumps.length) {
+    if (w.c.s === H.trump) {
+      const over = trumps.filter(c => rv(c) > rv(w.c));
+      return over.length ? minBy(over, rv) : discard(hand);
+    }
+    return minBy(trumps, rv);
+  }
+  return discard(hand);
+}
+function hkRender(clickable){
+  const y = $('hkYou'); y.innerHTML = '';
+  const legal = clickable ? legalCards(0) : [];
+  H.hands[0].forEach(c => {
+    const el = cardEl(c, false, true);
+    if (clickable) {
+      if (legal.includes(c)) { el.classList.add('pick'); el.onclick = () => { if (H.resolve) { const r = H.resolve; H.resolve = null; r(c); } }; }
+      else el.classList.add('dim');
+    }
+    y.appendChild(el);
+  });
+  const t = $('hkTrick'); t.innerHTML = '';
+  H.trick.forEach(x => { const el = cardEl(x.c, false, true); el.classList.add('t' + x.seat); t.appendChild(el); });
+  for (let s = 1; s <= 3; s++) $('hkN' + s).textContent = SEAT[s] + ' (' + fa(H.hands[s].length) + ' کارت)';
+  $('hkT0').textContent = fa(H.tricks[0]); $('hkT1').textContent = fa(H.tricks[1]);
+  $('hkM0').textContent = fa(H.match[0]); $('hkM1').textContent = fa(H.match[1]);
+  $('hkTrump').textContent = H.trump || '—';
+  $('hkTrump').style.color = H.trump && isRed(H.trump) ? 'var(--red)' : '';
+}
+function hkSay(t, cls){ const m = $('hkMsg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
+function humanPlay(){
+  hkRender(true); hkSay('کارتت را انتخاب کن');
+  return new Promise(res => { H.resolve = res; });
+}
+function chooseSuit(){
+  const box = $('hkBtns'); box.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'suits';
+  return new Promise(res => {
+    SUITS.forEach(s => {
+      const b = document.createElement('button'); b.className = 'suitbtn' + (isRed(s) ? ' red' : ''); b.textContent = s;
+      b.onclick = () => { box.innerHTML = ''; res(s); }; wrap.appendChild(b);
+    });
+    box.appendChild(wrap);
+  });
+}
+async function hkRound(){
+  H.running = true;
+  const deck = shuffledDeck();
+  H.hands = [[], [], [], []]; H.tricks = [0, 0]; H.trump = null; H.trick = [];
+  for (let s = 0; s < 4; s++) H.hands[s] = deck.splice(0, 5);
+  sortHand(H.hands[0], null); hkRender(false);
+  if (H.hakem === 0) {
+    hkSay('تو حاکم هستی. حکم را انتخاب کن');
+    H.trump = await chooseSuit();
+  } else {
+    const hand = H.hands[H.hakem], count = {};
+    hand.forEach(c => count[c.s] = (count[c.s] || 0) + 1);
+    H.trump = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+    hkSay(SEAT[H.hakem] + ' حاکم است و حکم را ' + H.trump + ' گذاشت');
+    await sleep(1400);
+  }
+  for (let s = 0; s < 4; s++) H.hands[s].push(...deck.splice(0, 8));
+  H.hands.forEach(h => sortHand(h, H.trump));
+  sound('card'); hkRender(false);
+  let lead = H.hakem;
+  for (let t = 0; t < 13 && H.tricks[0] < 7 && H.tricks[1] < 7; t++) {
+    H.trick = [];
+    for (let i = 0; i < 4; i++) {
+      const seat = (lead + i) % 4;
+      let c;
+      if (seat === 0) c = await humanPlay();
+      else { hkSay('نوبت ' + SEAT[seat]); await sleep(650); c = botPlay(seat); }
+      H.hands[seat].splice(H.hands[seat].indexOf(c), 1);
+      H.trick.push({seat, c}); sound('card'); hkRender(false);
+    }
+    await sleep(1000);
+    const winner = trickLeader().seat;
+    H.tricks[winner % 2]++;
+    hkSay((winner % 2 === 0 ? 'دست را بردید' : 'دست را بردند') + ' (' + SEAT[winner] + ')', winner % 2 === 0 ? 'win' : 'lose');
+    await sleep(700);
+    H.trick = []; hkRender(false);
+    lead = winner;
+  }
+  const team = H.tricks[0] >= 7 ? 0 : 1;
+  H.match[team]++;
+  if (H.hakem % 2 !== team) H.hakem = (H.hakem + 1) % 4;
+  hkRender(false);
+  hkSay(team === 0 ? 'دور را بردید!' : 'دور را باختید', team === 0 ? 'win' : 'lose');
+  sound(team === 0 ? 'win' : 'lose'); haptic(team === 0 ? 'win' : 'lose');
+  H.running = false; hkIdle();
+}
+
+/* ================= Sound ================= */
+let ac, master, musicOn = true, musicStarted = false;
+function ctx(){
+  if (!ac) { ac = new (window.AudioContext || window.webkitAudioContext)(); master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination); }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function startMusic(){
+  if (musicStarted || !musicOn) return;
+  const a = ctx(); musicStarted = true;
+  const pad = a.createGain(); pad.gain.value = 0.05; pad.connect(master);
+  [110, 164.81, 220, 277.18].forEach((f, i) => {
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+    const lfo = a.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
+    const lg = a.createGain(); lg.gain.value = 3; lfo.connect(lg); lg.connect(o.frequency);
+    const g = a.createGain(); g.gain.value = 0.6 / (i + 1);
+    o.connect(g); g.connect(pad); o.start(); lfo.start();
+  });
+}
+function sound(kind){
+  if (!musicOn) return;
+  const a = ctx(), t = a.currentTime;
+  const tone = (f, d, type, v, at) => {
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(v, t + at); g.gain.exponentialRampToValueAtTime(0.0001, t + at + d);
+    o.connect(g); g.connect(master); o.start(t + at); o.stop(t + at + d);
+  };
+  if (kind === 'card') tone(520, 0.08, 'triangle', 0.15, 0);
+  if (kind === 'tick') tone(660, 0.06, 'sine', 0.12, 0);
+  if (kind === 'win') [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'sine', 0.18, i * 0.1));
+  if (kind === 'lose') [330, 247].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.08, i * 0.15));
+}
+$('music').onclick = () => {
+  musicOn = !musicOn; $('music').textContent = musicOn ? '♪' : '×';
+  if (master) master.gain.value = musicOn ? 0.5 : 0;
+  if (musicOn && !musicStarted) startMusic();
+};
+
+/* ================= Starfield ================= */
+(function(){
+  const cv = $('stars'), g = cv.getContext('2d'); let stars = [];
+  function size(){
+    cv.width = innerWidth; cv.height = innerHeight;
+    stars = Array.from({length: 90}, () => ({x: Math.random() * cv.width, y: Math.random() * cv.height, r: Math.random() * 1.4 + .3, p: Math.random() * 6}));
+    paint(0);
+  }
+  function paint(t){
+    g.clearRect(0, 0, cv.width, cv.height);
+    for (const s of stars) { g.globalAlpha = .4 + .6 * Math.abs(Math.sin(t / 1500 + s.p)); g.fillStyle = '#fff'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, 7); g.fill(); }
+  }
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function loop(t){ paint(t); requestAnimationFrame(loop); }
+  addEventListener('resize', size); size();
+  if (!still) requestAnimationFrame(loop);
+})();
+
+toBetPhase();
+</script>
+</body>
+</html>
